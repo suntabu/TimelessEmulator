@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Spectre.Console;
 using TimelessEmulator.Data;
@@ -26,13 +27,42 @@ public static class Program
         if (!DataManager.Initialize())
             ExitWithError("Failed to initialize the [yellow]data manager[/].");
 
+        SelectionPrompt<string> workModePromot = new SelectionPrompt<string>()
+                    .Title("[green] Working mode[/]:")
+                    .AddChoices(new string[]{
+                "Once a time",
+                "Iteration all a time"
+                    });
+        string workMode = AnsiConsole.Prompt(workModePromot);
         PassiveSkill passiveSkill = GetPassiveSkillFromInput();
-
         if (passiveSkill == null)
             ExitWithError("Failed to get the [yellow]passive skill[/] from input.");
+        if (workMode == "Once a time")
+        {
+            TimelessJewel timelessJewel = GetTimelessJewelFromInput();
+            HandleTimelessJewelSelection(passiveSkill, timelessJewel);
+        }
+        else
+        {
+            var jewels = GetTimelessJewelsFromInput();
+            for (int i = 0; i < jewels.Count; i++)
+            {
+                var seedStr = $"[yellow]Seeds:{jewels[i].Seed}[/]";
+                AnsiConsole.MarkupLine(seedStr);
+                sw.WriteLine(seedStr);
+                HandleTimelessJewelSelection(passiveSkill, jewels[i]);
+            }
 
-        TimelessJewel timelessJewel = GetTimelessJewelFromInput();
+        }
 
+        sw.Close();
+        // WaitForExit();
+        Main(arguments);
+
+    }
+
+    private static void HandleTimelessJewelSelection(PassiveSkill passiveSkill, TimelessJewel timelessJewel)
+    {
         if (timelessJewel == null)
             ExitWithError("Failed to get the [yellow]timeless jewel[/] from input.");
 
@@ -66,8 +96,6 @@ public static class Program
 
             PrintAlternatePassiveAdditionInformations(alternatePassiveAdditionInformations);
         }
-
-        WaitForExit();
     }
 
     private static PassiveSkill GetPassiveSkillFromInput()
@@ -95,7 +123,7 @@ public static class Program
         return passiveSkill;
     }
 
-    private static TimelessJewel GetTimelessJewelFromInput()
+    private static TimelessJewel GetTimelessJewelFromInputThenIterateRange()
     {
         Dictionary<uint, string> timelessJewelTypes = new Dictionary<uint, string>()
         {
@@ -208,6 +236,161 @@ public static class Program
         return new TimelessJewel(alternateTreeVersion, timelessJewelConqueror, timelessJewelSeed);
     }
 
+
+    private static (AlternateTreeVersion alternateTreeVersion, TimelessJewelConqueror timelessJewelConqueror, uint alternateTreeVersionIndex) GetTimelessJeelFromInputPrepare()
+    {
+        Dictionary<uint, string> timelessJewelTypes = new Dictionary<uint, string>()
+        {
+            { 1, "Glorious Vanity" },
+            { 2, "Lethal Pride" },
+            { 3, "Brutal Restraint" },
+            { 4, "Militant Faith" },
+            { 5, "Elegant Hubris" }
+        };
+
+        Dictionary<uint, Dictionary<string, TimelessJewelConqueror>> timelessJewelConquerors = new Dictionary<uint, Dictionary<string, TimelessJewelConqueror>>()
+        {
+            {
+                1, new Dictionary<string, TimelessJewelConqueror>()
+                {
+                    { "Xibaqua", new TimelessJewelConqueror(1, 0) },
+                    { "[springgreen3]Zerphi (Legacy)[/]", new TimelessJewelConqueror(2, 0) },
+                    { "Ahuana", new TimelessJewelConqueror(2, 1) },
+                    { "Doryani", new TimelessJewelConqueror(3, 0) }
+                }
+            },
+            {
+                2, new Dictionary<string, TimelessJewelConqueror>()
+                {
+                    { "Kaom", new TimelessJewelConqueror(1, 0) },
+                    { "Rakiata", new TimelessJewelConqueror(2, 0) },
+                    { "[springgreen3]Kiloava (Legacy)[/]", new TimelessJewelConqueror(3, 0) },
+                    { "Akoya", new TimelessJewelConqueror(3, 1) }
+                }
+            },
+            {
+                3, new Dictionary<string, TimelessJewelConqueror>()
+                {
+                    { "[springgreen3]Deshret (Legacy)[/]", new TimelessJewelConqueror(1, 0) },
+                    { "Balbala", new TimelessJewelConqueror(1, 1) },
+                    { "Asenath", new TimelessJewelConqueror(2, 0) },
+                    { "Nasima", new TimelessJewelConqueror(3, 0) }
+                }
+            },
+            {
+                4, new Dictionary<string, TimelessJewelConqueror>()
+                {
+                    { "[springgreen3]Venarius (Legacy)[/]", new TimelessJewelConqueror(1, 0) },
+                    { "Maxarius", new TimelessJewelConqueror(1, 1) },
+                    { "Dominus", new TimelessJewelConqueror(2, 0) },
+                    { "Avarius", new TimelessJewelConqueror(3, 0) }
+                }
+            },
+            {
+                5, new Dictionary<string, TimelessJewelConqueror>()
+                {
+                    { "Cadiro", new TimelessJewelConqueror(1, 0) },
+                    { "Victario", new TimelessJewelConqueror(2, 0) },
+                    { "[springgreen3]Chitus (Legacy)[/]", new TimelessJewelConqueror(3, 0) },
+                    { "Caspiro", new TimelessJewelConqueror(3, 1) }
+                }
+            }
+        };
+
+
+
+        SelectionPrompt<string> timelessJewelTypeSelectionPrompt = new SelectionPrompt<string>()
+            .Title("[green]Timeless Jewel Type[/]:")
+            .AddChoices(timelessJewelTypes.Values.ToArray());
+
+        string timelessJewelTypeInput = AnsiConsole.Prompt(timelessJewelTypeSelectionPrompt);
+
+        AnsiConsole.MarkupLine($"[green]Timeless Jewel Type[/]: {timelessJewelTypeInput}");
+
+        uint alternateTreeVersionIndex = timelessJewelTypes
+            .First(q => (q.Value == timelessJewelTypeInput))
+            .Key;
+
+        AlternateTreeVersion alternateTreeVersion = DataManager.AlternateTreeVersions
+            .First(q => (q.Index == alternateTreeVersionIndex));
+
+        SelectionPrompt<string> timelessJewelConquerorSelectionPrompt = new SelectionPrompt<string>()
+            .Title("[green] Timeless Jewel Conqueror[/]:")
+            .AddChoices(timelessJewelConquerors[alternateTreeVersionIndex].Keys.ToArray());
+
+        string timelessJewelConquerorInput = AnsiConsole.Prompt(timelessJewelConquerorSelectionPrompt);
+
+        AnsiConsole.MarkupLine($"[green]Timeless Jewel Conqueror[/]: {timelessJewelConquerorInput}");
+
+        TimelessJewelConqueror timelessJewelConqueror = timelessJewelConquerors[alternateTreeVersionIndex]
+            .First(q => (q.Key == timelessJewelConquerorInput))
+            .Value;
+
+        return (alternateTreeVersion, timelessJewelConqueror, alternateTreeVersionIndex);
+    }
+
+    private static TimelessJewel GetTimelessJewelFromInput()
+    {
+        var result = GetTimelessJeelFromInputPrepare();
+
+        var timelessJewelSeed = GetOneTimelessJewelSeed(result.alternateTreeVersionIndex);
+
+        return new TimelessJewel(result.alternateTreeVersion, result.timelessJewelConqueror, timelessJewelSeed);
+    }
+
+
+    private static List<TimelessJewel> GetTimelessJewelsFromInput()
+    {
+        var result = GetTimelessJeelFromInputPrepare();
+
+        var timelessJewelSeeds = GetRangeTimelessJewelSeeds(result.alternateTreeVersionIndex);
+
+        var jewels = new List<TimelessJewel>();
+        for (int i = 0; i < timelessJewelSeeds.Count; i++)
+        {
+            jewels.Add(new TimelessJewel(result.alternateTreeVersion, result.timelessJewelConqueror, timelessJewelSeeds[i]));
+        }
+
+        return jewels;
+    }
+
+    static Dictionary<uint, (uint minimumSeed, uint maximumSeed)> timelessJewelSeedRanges = new Dictionary<uint, (uint minimumSeed, uint maximumSeed)>()
+        {
+            { 1, (100, 8000) },
+            { 2, (10000, 18000) },
+            { 3, (500, 8000) },
+            { 4, (2000, 10000) },
+            { 5, (2000, 160000) }
+        };
+    private static uint GetOneTimelessJewelSeed(uint alternateTreeVersionIndex)
+    {
+        TextPrompt<uint> timelessJewelSeedTextPrompt = new TextPrompt<uint>($"[green]Timeless Jewel Seed ({timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed} - {timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed})[/]:")
+          .Validate((uint input) =>
+          {
+              if ((input >= timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed) &&
+                  (input <= timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed))
+              {
+                  return ValidationResult.Success();
+              }
+
+              return ValidationResult.Error($"[red]Error[/]: The [yellow]timeless jewel seed[/] must be between {timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed} and {timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed}.");
+          });
+
+        uint timelessJewelSeed = AnsiConsole.Prompt(timelessJewelSeedTextPrompt);
+        return timelessJewelSeed;
+    }
+
+
+    private static List<uint> GetRangeTimelessJewelSeeds(uint alternateTreeVersionIndex)
+    {
+        var seeds = new List<uint>();
+        for (uint i = timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed; i <= timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed; i += 1)
+        {
+            seeds.Add(i);
+        }
+        return seeds;
+    }
+
     private static void PrintAlternatePassiveAdditionInformations(IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations)
     {
         ArgumentNullException.ThrowIfNull(alternatePassiveAdditionInformations, nameof(alternatePassiveAdditionInformations));
@@ -221,8 +404,25 @@ public static class Program
                 uint statIndex = alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.ElementAt(i);
                 uint statRoll = alternatePassiveAdditionInformation.StatRolls.ElementAt(i).Value;
 
-                AnsiConsole.MarkupLine($"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]");
+                var output = $"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]";
+
+                AnsiConsole.MarkupLine(output);
+
+                sw.WriteLine(output);
             }
+        }
+    }
+
+    private static StreamWriter _sw;
+    private static StreamWriter sw
+    {
+        get
+        {
+            if (_sw == null)
+            {
+                _sw = new StreamWriter(new FileStream("./output.txt", FileMode.OpenOrCreate));
+            }
+            return _sw;
         }
     }
 
