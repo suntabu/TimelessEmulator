@@ -31,6 +31,8 @@ public static class Program
                     .Title("[green] Working mode[/]:")
                     .AddChoices(new string[]{
                 "Once a time",
+                "A skill all seeds a time",
+                "Union two skills a time all seeds",
                 "Iteration all a time"
                     });
         string workMode = AnsiConsole.Prompt(workModePromot);
@@ -41,6 +43,19 @@ public static class Program
         {
             TimelessJewel timelessJewel = GetTimelessJewelFromInput();
             HandleTimelessJewelSelection(passiveSkill, timelessJewel);
+        }
+        else if (workMode == "Union two skills a time all seeds")
+        {
+            PassiveSkill passiveSkill2 = GetPassiveSkillFromInput();
+            // TimelessJewel timelessJewel = GetTimelessJewelFromInput();
+            var jewels = GetTimelessJewelsFromInput();
+            for (int i = 0; i < jewels.Count; i++)
+            {
+                var seedStr = $"[yellow]Seeds:{jewels[i].Seed}[/]";
+                AnsiConsole.MarkupLine(seedStr);
+                sw.WriteLine(seedStr);
+                HandleTimelessJewelSelection(passiveSkill, passiveSkill2,jewels[i]);
+            }
         }
         else
         {
@@ -95,6 +110,48 @@ public static class Program
             IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations = alternateTreeManager.AugmentPassiveSkill();
 
             PrintAlternatePassiveAdditionInformations(alternatePassiveAdditionInformations);
+        }
+    }
+
+    private static void HandleTimelessJewelSelection(PassiveSkill passiveSkill, PassiveSkill passiveSkill2, TimelessJewel timelessJewel)
+    {
+        if (timelessJewel == null)
+            ExitWithError("Failed to get the [yellow]timeless jewel[/] from input.");
+
+        AnsiConsole.WriteLine();
+
+        AlternateTreeManager alternateTreeManager = new AlternateTreeManager(passiveSkill, timelessJewel);
+        AlternateTreeManager alternateTreeManager2 = new AlternateTreeManager(passiveSkill2, timelessJewel);
+
+
+        bool isPassiveSkillReplaced = alternateTreeManager.IsPassiveSkillReplaced();
+        bool isPassiveSkillReplaced2 = alternateTreeManager2.IsPassiveSkillReplaced();
+
+
+        AnsiConsole.MarkupLine($"[green]Is Passive Skill Replaced[/]: {isPassiveSkillReplaced} {isPassiveSkillReplaced2}");
+
+        if (isPassiveSkillReplaced && isPassiveSkillReplaced2)
+        {
+            AlternatePassiveSkillInformation alternatePassiveSkillInformation = alternateTreeManager.ReplacePassiveSkill();
+
+            AnsiConsole.MarkupLine($"[green]Alternate Passive Skill[/]: [yellow]{alternatePassiveSkillInformation.AlternatePassiveSkill.Name}[/] ([yellow]{alternatePassiveSkillInformation.AlternatePassiveSkill.Identifier}[/])");
+
+            for (int i = 0; i < alternatePassiveSkillInformation.AlternatePassiveSkill.StatIndices.Count; i++)
+            {
+                uint statIndex = alternatePassiveSkillInformation.AlternatePassiveSkill.StatIndices.ElementAt(i);
+                uint statRoll = alternatePassiveSkillInformation.StatRolls.ElementAt(i).Value;
+
+                AnsiConsole.MarkupLine($"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]");
+            }
+
+            PrintAlternatePassiveAdditionInformations(alternatePassiveSkillInformation.AlternatePassiveAdditionInformations);
+        }
+        else
+        {
+            IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations = alternateTreeManager.AugmentPassiveSkill();
+            IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations2 = alternateTreeManager2.AugmentPassiveSkill();
+
+            PrintAlternatePassiveAdditionInformations(alternatePassiveAdditionInformations, alternatePassiveAdditionInformations2);
         }
     }
 
@@ -398,6 +455,42 @@ public static class Program
         foreach (AlternatePassiveAdditionInformation alternatePassiveAdditionInformation in alternatePassiveAdditionInformations)
         {
             AnsiConsole.MarkupLine($"\t[green]Addition[/]: [yellow]{alternatePassiveAdditionInformation.AlternatePassiveAddition.Identifier}[/]");
+
+            for (int i = 0; i < alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.Count; i++)
+            {
+                uint statIndex = alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.ElementAt(i);
+                uint statRoll = alternatePassiveAdditionInformation.StatRolls.ElementAt(i).Value;
+
+                var output = $"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]";
+
+                AnsiConsole.MarkupLine(output);
+
+                sw.WriteLine(output);
+            }
+        }
+    }
+
+    private static void PrintAlternatePassiveAdditionInformations(IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations, IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations2)
+    {
+        ArgumentNullException.ThrowIfNull(alternatePassiveAdditionInformations, nameof(alternatePassiveAdditionInformations));
+
+        foreach (AlternatePassiveAdditionInformation alternatePassiveAdditionInformation in alternatePassiveAdditionInformations)
+        {
+            var firstSkillAdditionIdentifier = alternatePassiveAdditionInformation.AlternatePassiveAddition.Identifier;
+            var secondSkillAdditionIdentifier = alternatePassiveAdditionInformations2.FirstOrDefault(t => t.AlternatePassiveAddition.Identifier == firstSkillAdditionIdentifier);
+
+            if (secondSkillAdditionIdentifier == null)
+            {
+                continue;
+            }
+
+            if(!firstSkillAdditionIdentifier.Contains("maraketh_notable_add_flask_charges")){
+                continue;
+            }
+
+            var ot = $"\t[green]Addition[/]: [yellow]{alternatePassiveAdditionInformation.AlternatePassiveAddition.Identifier} <==> {secondSkillAdditionIdentifier.AlternatePassiveAddition.Identifier}[/]";
+            AnsiConsole.MarkupLine(ot);
+            sw.WriteLine(ot);
 
             for (int i = 0; i < alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.Count; i++)
             {
